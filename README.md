@@ -1,5 +1,5 @@
 ## 1. Introduction
-### - A single function for extracting container value consisting of a smart and convenient list and dict
+### - A smart and convenience single function for extracting container value consisting of list and dict
 ### - Query a container with a complex structure, mainly generated from json, and flatten it into a dict with a single structure.
 ### - Get freedom from code that indexes complex json data one by one and writes for loops like this below...
 > 

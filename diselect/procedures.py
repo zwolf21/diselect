@@ -76,14 +76,14 @@ def select_container(norm_query, flatten):
     if over_matched:
         raise KeyError(f'matched at muliteple path of items, Use more detail query of path {over_matched}')
 
+    if not selected:
+        print(f'diselect Warning: Queries has empthy results')
     return selected
 
 
 def groupby_selected(selected):
 
     def get_common_index_length(selected):
-        if not selected:
-            raise ValueError("Query has empthy results")
         return min([
             len(index) for index, path, query, value in selected
         ])
@@ -115,7 +115,11 @@ def transform_selected(norm_query, selected):
         transformed = {}
         for qry, val in select.items():
             alias, apply = norm_query[qry]
-            transformed[alias] = apply(val)
+            try:
+                transformed[alias] = apply(val)
+            except Exception as e:
+                transformed[alias] = val
+                print(f'diselect Warning: apply function for value has failed due to{e}, return to original value:{val}')
         yield transformed
 
 

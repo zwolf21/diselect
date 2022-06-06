@@ -170,12 +170,12 @@ for r in diselect(sample_from_json, query_aliases):
 ```
 ```python
 # Useage 4) join listed children values
-# pass tuple value of aliase and joinsep 
+# pass tuple value of aliase and function 
 
 query_aliases_and_join_children = {
     ('city', 'names', 'en'): 'city_name',
     ('country', 'names', 'en'): 'country_name',
-    ('subdivisions', 'names', 'en'): ('subdivision_names', ','), # alias, joinsep
+    ('subdivisions', 'names', 'en'): ('subdivision_names', ','.join), # alias, str join function
 }
 
 for r in diselect(sample_from_json, query_aliases_and_join_children):
@@ -196,7 +196,7 @@ query = {
     ('country', 'iso_code'): 'country_code',
     ('country', 'names', 'en'): 'country_name',
     ('location', 'time_zone'): 'timezone',
-    ('subdivisions', 'names', 'en'): ('subdivision_name', ','), 
+    ('subdivisions', 'names', 'en'): ('subdivision_name', '|'.join), 
 }
 
 for r in diselect(container=sample_from_json, query=query):
@@ -217,13 +217,13 @@ for r in diselect(container=sample_from_json, query=query):
 query1 = {
     key1, key2,
     {(key3, key2): alias},
-    {(key4, key5): (alias2, joinsep)},
+    {(key4, key5): (alias2, apply)},
 }
 query2 = [
     'column1', 'column2',
     {
         ('path1', 'path2'): 'alias1',
-        ('patt1', 'path2', 'path3'): ('alias2', '\n'),
+        ('patt1', 'path2', 'path3'): ('alias2', dateutil.parser.parse),
     },
     'column4'
 ]
@@ -234,7 +234,7 @@ query2 = [
 - You can mix dict and tuple
 - The results column order of the output matches the order of the query
 - alias: column name representing the query
-- joinsep: compose to string multiple children values(m2m values)
+- apply: function to be applied to value
 ### 3. caution
 - If there is no query matching the key path of the container, a warning is output and it does not appear into the result column.
 - If the matching of the query is duplicated, an exception is raised and a more detailed query is requested.
@@ -258,7 +258,7 @@ greedy_query = [
         ('country', 'iso_code'): 'country_code',
         ('country', 'names', 'en'): 'country_name',
         ('location', 'time_zone'): 'timezone',
-        ('subdivisions', 'names', 'en'): ('subdivision_name', ','), 
+        ('subdivisions', 'names', 'en'): ('subdivision_name', ','.join), 
     }
 ]
 
@@ -282,13 +282,56 @@ query_list = {
     ('country', 'iso_code'): 'country_code',
     ('country', 'names', 'en'): 'country_name',
     ('location', 'time_zone'): 'timezone',
-    ('subdivisions', 'names', 'en'): ('subdivision_name', ','), 
+    ('subdivisions', 'names', 'en'): ('subdivision_name', ','.join), 
 }
 
 
 
 [context_data] = list(diselect(sample_from_json, query_context)) # may one
+count = context_data['count']
+date = context_data['date']
+
+# or may be simple and better just direct indexing when values are easy to access
+count = sample_from_json['count']
+date = sample_from_json['date']
 
 data_list = list(diselect(sample_from_json, query_list)) # many
 
+```
+
+## 4. More Useages
+
+### 1. typing values
+    - value typing via apply function
+
+```python
+import dateutil
+
+data = [
+    {
+        'place_id': 142213,
+        'visit_count': '5',
+        'visit_date': '2022/2/21',
+        'rating': '2.5',
+    },
+    {
+        'place_id': 154321,
+        'visit_count': '12',
+        'visit_date': '2022.3.7.',
+        'rating': '4.5',
+    },
+]
+
+parsed = diselect(data,
+{
+    'place_id': ('place_id', str),
+    'visit_count': ('visit_count', int),
+    'rating': ('point', float),
+    'visit_date': ('visit_count', dateutil.parser.parse),
+})
+for row in parsed:
+    print(row)
+# results
+# {'place_id': '142213', 'visit_count': datetime.datetime(2022, 2, 21, 0, 0), 'point': 2.5}
+# {'place_id': '154321', 'visit_count': datetime.datetime(2022, 3, 7, 0, 0), 'point': 4.5}
 ```

@@ -12,16 +12,16 @@ def normalize_query(query):
                 if isinstance(q, str):
                     q = q,
                 if isinstance(rest, (list, tuple)) and len(rest) == 2:
-                    alias, joinsep = rest
+                    alias, apply = rest
                 elif isinstance(rest, str):
-                    alias, joinsep = rest, None
+                    alias, apply = rest, lambda x:x
                 else:
-                    raise ValueError('Invalid Query Value')
-                qs[q] = (alias, joinsep)
+                    raise ValueError(f'Invalid Query Value: {q}')
+                qs[q] = (alias, apply)
         elif isinstance(qry, (tuple, list)):
-            qs[qry] = (qry, None)
+            qs[qry] = (qry, lambda x:x)
         elif isinstance(qry, str):
-            qs[(qry,)] = (qry, None)
+            qs[(qry,)] = (qry, lambda x:x)
         else:
             raise ValueError('Invalid Query Key')
     return qs
@@ -114,12 +114,8 @@ def transform_selected(norm_query, selected):
     for select in selected:
         transformed = {}
         for qry, val in select.items():
-            alias, joinsep = norm_query[qry]
-            if isinstance(val, list) and joinsep:
-                val = map(str, val)
-                transformed[alias] = joinsep.join(val)
-            else:
-                transformed[alias] = val
+            alias, apply = norm_query[qry]
+            transformed[alias] = apply(val)
         yield transformed
 
 

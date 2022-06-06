@@ -6,9 +6,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
 	name='diselect',
-	version='0.0.2',
+	version='1.0.0',
 	license='MIT',
-	description='smart and convenient value selector in complex container nested with dict and list(from json data)',
+	description='smart and convenient dict flatten library for complex container nested with dict and list',
 	long_description=long_description,
 	long_description_content_type="text/markdown",
 	author = 'HS Moon',

@@ -7,8 +7,9 @@ def diselect(container, query):
         [field1, field2],
         {
             field1: alias1,
-            field2: [alias2, ','(joinsep)],
+            field2: [alias2, func],
         }
+        ex) diselect({('path1,', 'path2): ('alias', int)})
     '''
     norm_query = normalize_query(query)
     records = flatten_container(container)

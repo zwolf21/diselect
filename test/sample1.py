@@ -10,9 +10,9 @@ def test_sample1():
     query = [
         'companyName',
         'website',
-        'email',
         {
-            ('nested', 'representedBrands'): ('representedBrands', ',')
+            'email':('email', lambda e: e.split('@')),
+            ('nested', 'representedBrands'): ('representedBrands', ','.join )
         }
     ]        
 

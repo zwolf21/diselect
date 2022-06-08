@@ -1,5 +1,5 @@
 from itertools import groupby
-
+from collections import deque
 
 
 def normalize_query(query):
@@ -30,10 +30,11 @@ def normalize_query(query):
 def flatten_container(container):
     '''inspect index, path, value
     '''
-    cntrq = [((), (0,), container)]
+    initial = (), (0,), container,
+    cntrq = deque([initial])
     ret = []
     while cntrq:
-        path, index, cntr = cntrq.pop(0)
+        path, index, cntr = cntrq.popleft()
         p = None
         if isinstance(cntr, dict):
             for key, value in cntr.items():

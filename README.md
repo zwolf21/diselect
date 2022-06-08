@@ -203,8 +203,8 @@ for r in diselect(container=sample_from_json, query=query):
     print(r)
 
 # results
-# {'city_name': 'Songpa-gu', 'continent_code': 'AS', 'continent_name': 'Asia', 'country_code': 'KR', 'country_name': 'South Korea', 'timezone': 'Asia/Seoul', 'subdivision_name': 'Seoul,Hangang'}
-# {'city_name': 'Songpa-gu2', 'continent_code': 'AS2', 'continent_name': 'Asia2', 'country_code': 'KR2', 'country_name': 'South Korea2', 'timezone': 'Asia/Seoul2', 'subdivision_name': 'Seoul2,Hangang2'}
+# {'city_name': 'Songpa-gu', 'continent_code': 'AS', 'continent_name': 'Asia', 'country_code': 'KR', 'country_name': 'South Korea', 'timezone': 'Asia/Seoul', 'subdivision_name': 'Seoul|Hangang'}
+# {'city_name': 'Songpa-gu2', 'continent_code': 'AS2', 'continent_name': 'Asia2', 'country_code': 'KR2', 'country_name': 'South Korea2', 'timezone': 'Asia/Seoul2', 'subdivision_name': 'Seoul2|Hangang2'}
 ```
 
 ----
@@ -237,7 +237,7 @@ query2 = [
 - apply: function to be applied to value
 ### 3. caution
 - If there is no query matching the key path of the container, a warning is output and it does not appear into the result column.
-- If the matching of the query is duplicated, an exception is raised and a more detailed query is requested.
+- If the matching of the query is duplicated, an exception is raised and a more detailed query is required.
 - Consider the data structure of the container. Suggested queries are aggregated by matching top-level keys of matched with query.
 ```python
 # date and count in the presented example data are single entities as top-level keys.

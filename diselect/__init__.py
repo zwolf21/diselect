@@ -13,8 +13,7 @@ def diselect(container, query):
     '''
     norm_query = normalize_query(query)
     records = flatten_container(container)
-    if selected := select_container(norm_query, records):
-        selected = groupby_selected(selected)
-        selected = transform_selected(norm_query, selected)
-        return selected
-    return []
+    selected = select_container(norm_query, records)
+    selected = groupby_selected(selected)
+    selected = transform_selected(norm_query, selected)
+    return selected

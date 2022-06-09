@@ -1,5 +1,13 @@
+import logging
 from itertools import groupby
 from collections import deque
+
+from .exceptions import *
+
+
+
+logging.basicConfig(format='diselect %(levelname)s: %(message)s')
+
 
 
 def normalize_query(query):
@@ -16,14 +24,14 @@ def normalize_query(query):
                 elif isinstance(rest, str):
                     alias, apply = rest, lambda x:x
                 else:
-                    raise ValueError(f'Invalid Query Value: {q}')
+                    raise InvalidQueryValues(rest)
                 qs[q] = (alias, apply)
-        elif isinstance(qry, (tuple, list)):
+        elif isinstance(qry, (tuple,)):
             qs[qry] = (qry, lambda x:x)
         elif isinstance(qry, str):
             qs[(qry,)] = (qry, lambda x:x)
         else:
-            raise ValueError('Invalid Query Key')
+            raise InvalidQueryKey(qry)
     return qs
 
 
@@ -32,7 +40,6 @@ def flatten_container(container):
     '''
     initial = (), (0,), container,
     cntrq = deque([initial])
-    ret = []
     while cntrq:
         path, index, cntr = cntrq.popleft()
         p = None
@@ -46,8 +53,7 @@ def flatten_container(container):
                 idx = *index, i
                 cntrq.append((path, idx, c))
         else:
-            ret.append((index, path, cntr))
-    return ret
+            yield index, path, cntr,
 
 
 def select_container(norm_query, flatten):
@@ -59,37 +65,28 @@ def select_container(norm_query, flatten):
 
     queries = norm_query.keys()
 
-    selected = []
-    match_cases = {}
+    matched = {}
     for index, path, value in flatten:
         for query in queries:
             if query_match(path, query):
-                match_cases.setdefault(query, set()).add(path)
-                selected.append((index, path, query, value))
+                if exists := matched.get(query):
+                    if exists != path:
+                        raise QueryMultipleMatched(query, exists, path)
+                matched[query] = path
+                yield index, path, query, value,
 
-    over_matched = {
-       k:v for k, v in match_cases.items() if len(v) > 1
-    }
+    if under_matched := (queries - matched.keys()):
+        logging.warning(f'Cannot find path of {under_matched}')
 
-    if under_matched := (queries - match_cases.keys()):
-        print(f'diselect Warning: Cannot find path of {under_matched}')
-
-    if over_matched:
-        raise KeyError(f'matched at muliteple path of items, Use more detail query of path {over_matched}')
-
-    if not selected:
-        print(f'diselect Warning: Queries has empthy results')
-    return selected
 
 
 def groupby_selected(selected):
 
     def get_common_index_length(selected):
-        return min([
-            len(index) for index, path, query, value in selected
-        ])
+        if index_lengths := [len(index) for index, *_ in selected]:
+            return min(index_lengths)
     
-    selected = list(sorted(selected, key=lambda sel: sel[0]))
+    selected = sorted(selected, key=lambda sel: sel[0])
     
     common_index_length = get_common_index_length(selected)
 
@@ -120,7 +117,7 @@ def transform_selected(norm_query, selected):
                 transformed[alias] = apply(val)
             except Exception as e:
                 transformed[alias] = val
-                print(f'diselect Warning: apply function for value has failed due to{e}, return to original value:{val}')
+                logging.warning(f'apply function {apply} for value has failed due to{e}\nreturn to original value: {val}')
         yield transformed
 
 

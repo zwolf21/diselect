@@ -2,6 +2,7 @@
 /[Ll]ib
 /Scripts
 /share
+/test
 
 *.egg-info/
 dist/

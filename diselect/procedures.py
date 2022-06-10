@@ -10,8 +10,6 @@ logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
 
-
-
 def select_container(norm_query, flatten):
     queries = norm_query.keys()
 
@@ -64,7 +62,9 @@ def groupby_selected(selected):
                             select.setdefault(query, []).append(val)
                             break
                     else:
+                        print(value, query)
                         select.setdefault(query, []).append(value)
+    
 
         yield select
 

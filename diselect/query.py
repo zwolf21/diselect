@@ -3,6 +3,9 @@ from .utils import concat_matrix
 
 from functools import partial
 
+
+
+
 def _serialize_query(query):
     if isinstance(query, dict):
         yield query
@@ -11,6 +14,9 @@ def _serialize_query(query):
     else:
         raise TypeError("Query must be dict or list not {}".format(type(queries)))
 
+
+def reversed(query):
+    quries = _serialize_query(query)
 
 
 def _norm_query_key(query):
@@ -50,9 +56,9 @@ def _set_query_params(query):
 
 
 def resolve_query(query):
-    queries = list(_serialize_query(query))
-    norm_value_quries = list(map(_set_query_params, queries))
-    norm_key_quries = list(map(_norm_query_key, norm_value_quries))
+    queries = _serialize_query(query)
+    norm_value_quries = map(_set_query_params, queries)
+    norm_key_quries = map(_norm_query_key, norm_value_quries)
     resolved = {k:v for qry in norm_key_quries for k,v in qry.items()}
     return resolved
 

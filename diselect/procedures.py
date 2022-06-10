@@ -1,7 +1,7 @@
 import logging
 from itertools import groupby
-from collections import deque
 
+from .query import query_match, get_priority
 from .exceptions import *
 
 
@@ -10,59 +10,9 @@ logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
 
-def normalize_query(query):
-    if isinstance(query, dict):
-        query = [query]
-    qs = {}
-    for qry in query:
-        if isinstance(qry, dict):
-            for q, rest in qry.items():
-                if isinstance(q, str):
-                    q = q,
-                if isinstance(rest, (list, tuple)) and len(rest) == 2:
-                    alias, apply = rest
-                elif isinstance(rest, str):
-                    alias, apply = rest, lambda x:x
-                else:
-                    raise InvalidQueryValues(rest)
-                qs[q] = (alias, apply)
-        elif isinstance(qry, (tuple,)):
-            qs[qry] = (qry, lambda x:x)
-        elif isinstance(qry, str):
-            qs[(qry,)] = (qry, lambda x:x)
-        else:
-            raise InvalidQueryKey(qry)
-    return qs
-
-
-def flatten_container(container):
-    '''inspect index, path, value
-    '''
-    initial = (), (0,), container,
-    cntrq = deque([initial])
-    while cntrq:
-        path, index, cntr = cntrq.popleft()
-        p = None
-        if isinstance(cntr, dict):
-            for key, value in cntr.items():
-                p = *path, key,
-                cntrq.append((p, index, value))
-        
-        elif isinstance(cntr, (list, tuple, set)):
-            for i, c in enumerate(cntr):
-                idx = *index, i
-                cntrq.append((path, idx, c))
-        else:
-            yield index, path, cntr,
 
 
 def select_container(norm_query, flatten):
-    
-    def query_match(path, query):
-        if len(query) > len(path):
-            return False
-        return path[-len(query):] == query
-
     queries = norm_query.keys()
 
     matched = {}
@@ -70,9 +20,10 @@ def select_container(norm_query, flatten):
         for query in queries:
             if query_match(path, query):
                 if exists := matched.get(query):
-                    if exists != path:
+                    if path not in exists and len(exists) >= len(query):
                         raise QueryMultipleMatched(query, exists, path)
-                matched[query] = path
+                matched.setdefault(query, set()).add(path)
+
                 yield index, path, query, value,
 
     if under_matched := (queries - matched.keys()):
@@ -86,18 +37,35 @@ def groupby_selected(selected):
         if index_lengths := [len(index) for index, *_ in selected]:
             return min(index_lengths)
     
-    selected = sorted(selected, key=lambda sel: sel[0])
+    selected = sorted(selected, key=lambda sel: (sel[0], get_priority(sel[2], sel[1])))
     
     common_index_length = get_common_index_length(selected)
 
-    for name, grouped in groupby(selected, key=lambda sel: sel[0][:common_index_length]):
+    for _, grouped in groupby(selected, key=lambda sel: sel[0][:common_index_length]):
+        grouped = list(grouped)
         select = {}
-        for sel in grouped:
-            index, path, query, value = sel
-            if len(index) == common_index_length:
-                select.update({query: value})
-            elif len(index) > common_index_length:
-                select.setdefault(query, []).append(value)
+        for query_group, query_grouped in groupby(grouped, key=lambda sel:(sel[0], sel[2])):
+            query_grouped = list(query_grouped)
+            # print(query_grouped)
+            values = {}
+            for (index, path, query, value) in query_grouped:
+                values.setdefault(query, []).append(value)
+            
+            for (index, path, query, value) in grouped:
+                if len(index) == common_index_length:
+                    if len(query) > 1:
+                        if val:=values.get(query):
+                            select[query] = val
+                    else:
+                        select[query] = value
+                elif len(index) > common_index_length:
+                    if len(query) > 1:
+                        if val:= values.get(query):
+                            select.setdefault(query, []).append(val)
+                            break
+                    else:
+                        select.setdefault(query, []).append(value)
+
         yield select
 
 
@@ -118,6 +86,7 @@ def transform_selected(norm_query, selected):
             except Exception as e:
                 transformed[alias] = val
                 logging.warning(f'apply function {apply} for value has failed due to{e}\nreturn to original value: {val}')
+                raise
         yield transformed
 
 

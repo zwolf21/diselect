@@ -19,5 +19,5 @@ class InvalidQueryValues(QueryBase):
 class QueryMultipleMatched(QueryBase):
 
     def __str__(self):
-        tmp = '''\n{} has multiple matching with \n {}\n {}\nRequires more detail query of path'''
+        tmp = '''\n{} has multiple matching with paths in \n {}\nRequires more detail query of path'''
         return tmp.format(*self.args)

@@ -1,19 +1,21 @@
-from .procedures import *
+from .exceptions import *
+from .quries import norm_query
+from .container import *
+
+
+
 
 
 
 def diselect(container, query):
-    '''query examples: 
-        [field1, field2],
-        {
-            field1: alias1,
-            field2: [alias2, func],
-        }
-        ex) diselect({('path1,', 'path2): ('alias', int)})
-    '''
-    norm_query = normalize_query(query)
-    records = flatten_container(container)
-    selected = select_container(norm_query, records)
-    selected = groupby_selected(selected)
-    selected = transform_selected(norm_query, selected)
-    return selected
+    flatten = flatten_container(container)
+    qs = norm_query(query)
+    filtered = filter_query(flatten, *qs)
+    pivot_index = get_top_depth(filtered)
+    selected_groups = groupby_depth(filtered, pivot_index)
+
+    for selected in selected_groups:
+        selected = merge_multi_query(selected)        
+        selected = groupby_depth(selected, pivot_index, updates=True)
+        selected = transform_selected(qs, selected)
+        yield from selected

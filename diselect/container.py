@@ -1,9 +1,8 @@
 import logging
 from itertools import groupby
-from operator import itemgetter
-from functools import reduce, partial
+from functools import reduce
 
-from .utils import concat
+from .utils import apply_to_depth
 from .exceptions import *
 
 
@@ -14,11 +13,12 @@ logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 class FlatItem:
 
-    def __init__(self, index, path, value, query=None):
+    def __init__(self, index, path, value, query=None, _matched_pos=0):
         self.index = index
         self.path = path
         self.value = value
         self.query = query
+        self._matched_pos = _matched_pos
 
     def __str__(self):
         kwargs = {
@@ -26,12 +26,15 @@ class FlatItem:
         }
         return 'INDEX: {index:<15} PATH: {path:<25} VALUE: {value:<20} QUERY: {query}'.format(**kwargs)
 
-    def match_query(self, *queries):
-        for query in queries:
+    def populate_matched(self, quries):
+        for i, query in enumerate(quries):
             if self.path[-len(query):] == query:
-                self.query=queries
-                return query
-        return False
+                kwargs = {
+                    **self.__dict__,
+                    '_matched_pos': i,
+                    'query': quries
+                }
+                yield query, FlatItem(**kwargs)
 
 
 
@@ -51,25 +54,24 @@ def flatten_container(container, index=None, path=None):
 
 
 
-def filter_query(flatten, *queryset):
-    filtered = []
+def produce_by_query(flatten, queryset):
     matched = {}
+    produced = []
     for flat in flatten:
         for quries in queryset:
-            if match:=flat.match_query(*quries):
-                filtered.append(flat)
-                matched.setdefault(match, set()).add(flat.path)
+            for matched_query, matched_flat in flat.populate_matched(quries):
+                if seen := matched.get(matched_query):
+                    if seen != matched_flat.path:
+                        raise QueryMultipleMatched(matched_query, seen, matched_flat.path)
+                matched[matched_query] = matched_flat.path
+                produced.append(matched_flat)
 
     quried = set(reduce(lambda cur, acc: cur+acc, queryset, ()))
     
     if undermatched:=quried-matched.keys():
-        logging.warning(f'Cannot find path of {undermatched}')
+        logging.warning(f'Cannot match path with query: {undermatched}')
 
-    if overmatched:={k:v for k,v in matched.items() if len(v)>1}:
-        raise QueryMultipleMatched(set(*overmatched.keys()), set(*overmatched.values()))
-
-    return filtered
-
+    return produced
 
 
 def filter_container_value(flatten):
@@ -86,19 +88,12 @@ def filter_container_value(flatten):
 
 
 def get_top_depth(flatten):
-    return min([len(flat.index) for flat in flatten])
-
-
-
-def filter_depth(flatten, depth):
-    return [
-        flat for flat in flatten
-        if len(flat.index) == depth
-    ]
+    return min([len(flat.index) for flat in flatten], default=0)
 
 
 
 def groupby_depth(flatten, depth, updates=False):
+    flatten = sorted(flatten, key=lambda flat: flat.index[:depth])
     for idx, grouped in groupby(flatten, key=lambda flat: flat.index[:depth]):
         if updates is False:
             yield grouped
@@ -113,52 +108,86 @@ def groupby_depth(flatten, depth, updates=False):
 
 
 
-def _get_merge_priority(queries, flat):
-    for i, query in enumerate(queries):
-        if flat.match_query(query):
-            return i
-    return 0
-
-
-
 def merge_multi_query(flatten):
     merged = []
+    # should be sorted by _matched_pos for mutiple query to decide merging order
+    flatten = sorted(flatten, key=lambda flat: (flat.query, flat.index, flat._matched_pos))
     for (qry, idx), grouped in groupby(flatten, key=lambda flat: (flat.query, flat.index)):
         if len(qry) > 1:
             values = []
             paths = ()
             for flat in grouped:
-                pri = _get_merge_priority(qry, flat)
-                values.append({'priority': pri, 'value': flat.value})
                 paths = *paths, flat.path
-            vals = [v['value'] for v in sorted(values, key=itemgetter('priority'))]
-            merged.append(FlatItem(idx, paths, vals, qry))
+                values.append(flat.value)
+            
+            merged.append(FlatItem(idx, paths, values, qry))
         else:
             merged += list(grouped)
     return merged
 
 
 
-def transform_selected(norm_query, selected):
-    # ordering
-    quries = list(norm_query.keys())
-    selected = [
-        {q:sel[q] for q in quries if q in sel}
-        for sel in selected
+def _skip_none(none, value, key, row):
+    if none == 'ignore' and value is None:
+        row[key] = value
+        return True
+    if none == 'drop' and value is None:
+        return True
+    if none == 'apply' and value is None:
+        return False
+
+
+def _reduce(app, value, depth=0):
+    
+    def _join(iterable, sep=app):
+        return sep.join(filter(None, iterable))
+
+    function_for_iterable =  [
+        sum, min, max, len,
+        all, any,
+        list, tuple, set,
+        _join,
     ]
-    #aliasing
-    for select in selected:
-        transformed = {}
-        for qry, val in select.items():
-            alias, apply = norm_query[qry]
-            if apply is not None:
-                if isinstance(apply, str):
-                    apply = partial(concat, seps=apply)
-                try:
-                    transformed[alias] = apply(val)
-                except Exception as e:
-                    transformed[alias] = val
-                    logging.warning(f'apply function {apply} for value has failed due to{e}\nreturn to original value: {val}')
-            else:
-                transformed[alias] = val
-        yield transformed
+    
+    if isinstance(app, str):
+        app = _join
+    if app in function_for_iterable:
+        depth = 1
+    return apply_to_depth(depth, app, value)
+
+# 1
+def apply_value(selected, qs, none, **kwargs):
+    sel = {}
+    for query, value in selected.items():
+        _, [*applies] = qs[query]
+        
+        if _skip_none(none, value, query, sel):
+            continue
+
+        for app in applies:
+            value = _reduce(app, value)
+
+        sel[query] = value
+    return sel
+
+# 2
+def alias_fields(selected, qs):
+    sel = {}
+    for quries, value in selected.items():
+        alias, *_ = qs[quries]
+        sel[alias] = value
+    return sel
+
+# 3
+def order_column(aliased, qs):
+    fields = [v[0] for k, v in qs.items()]
+    return {
+        k: aliased[k] for k in fields if k in aliased
+    }
+
+
+def transform_selected(selected, qs, **kwargs):
+    applied = map(lambda sel: apply_value(sel, qs, **kwargs), selected)
+    aliased = map(lambda sel: alias_fields(sel, qs), applied)
+    ordered = map(lambda sel: order_column(sel, qs), aliased)
+    yield from ordered

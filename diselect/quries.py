@@ -1,36 +1,60 @@
 from .exceptions import *
+from .utils import get_nested_depth
 
 
 
-
-def norm_query(query):
-    if isinstance(query, dict):
-        query = [query]
+def query2dict(query):
     qs = {}
-    for qry in query:
-        if isinstance(qry, dict):
-            for q, rest in qry.items():
-                if isinstance(q, str):
-                    q = (q,),
-                elif isinstance(q, (tuple, list)):
-                    if all(map(lambda e: isinstance(e, str), q)):
-                        q = q,
-                    else:
-                        q = tuple(((x,) if isinstance(x, str) else x for x in q))
-                if isinstance(rest, (list, tuple)) and len(rest) == 2:
-                    alias, apply = rest
-                elif isinstance(rest, str):
-                    alias, apply = rest, None
-                else:
-                    raise InvalidQueryValues(rest)
-                qs[q] = (alias, apply)
-        elif isinstance(qry, (tuple,)):
-            qs[(qry,)] = (qry, None)
-        elif isinstance(qry, str):
-            qs[((qry,),)] = (qry, None)
-        else:
-            raise InvalidQueryKey(qry)
+    if isinstance(query, (list, tuple)):
+        for qry in query:
+            if isinstance(qry, (str, tuple)):
+                qs[qry] = qry
+            elif isinstance(qry, dict):
+                qs.update(qry)
+    elif isinstance(query, dict):
+        qs.update(query)
+    else:
+        raise InvalidQueryKey(query)
     return qs
 
 
-    
+
+
+def multiply_querykey(key):
+    query_depth = get_nested_depth(key)
+    switch = {
+        0: lambda x: ((x,),),
+        1: lambda x: (x,),
+        2: lambda x: x
+    }
+    if trans:= switch.get(query_depth):
+        return trans(key)
+    else:
+        raise ValueError('Too many tuple nesting:{}'.format(key))
+
+
+def set_queryvalue(value):
+    alias, apply = None, [lambda x:x]
+    if isinstance(value, str):
+        alias = value
+    elif isinstance(value, (tuple, list)):
+        alias, *apply = value
+    else:
+        raise InvalidQueryValues(value)
+    return alias, apply
+
+
+def resolve_query(query, _depth=0):
+    if _depth == 0:
+        query = query2dict(query)
+        return resolve_query(query, _depth=_depth+1)
+    elif _depth == 1:
+        return {
+            multiply_querykey(key): set_queryvalue(value)
+            for key, value in query.items()
+        }
+
+
+def get_alias(qs, paths):
+    alias, *_ = qs[paths]
+    return alias

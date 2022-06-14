@@ -146,13 +146,17 @@ def _reduce(app, value, depth=0):
         sum, min, max, len,
         all, any,
         list, tuple, set,
-        _join,
+        _join, 
     ]
     
     if isinstance(app, str):
         app = _join
+    elif app.__name__ == 'join':
+        function_for_iterable.append(app)
+
     if app in function_for_iterable:
         depth = 1
+
     return apply_to_depth(depth, app, value)
 
 # 1

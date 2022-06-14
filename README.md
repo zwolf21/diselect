@@ -30,7 +30,6 @@ for cityinfo in data_list:
     ...
     OMG...
     ...
-    forif Hell...
     ....
 ```
 ---
@@ -170,12 +169,12 @@ for r in diselect(sample_from_json, query_aliases):
 ```
 ```python
 # Useage 4) join listed children values
-# pass tuple value of aliase and function 
+# pass tuple value of aliase and function
 
 query_aliases_and_join_children = {
     ('city', 'names', 'en'): 'city_name',
     ('country', 'names', 'en'): 'country_name',
-    ('subdivisions', 'names', 'en'): ('subdivision_names', ','.join), # alias, str join function
+    ('subdivisions', 'names', 'en'): ('subdivision_names', ','.join), # alias, join function
 }
 
 for r in diselect(sample_from_json, query_aliases_and_join_children):
@@ -186,6 +185,59 @@ for r in diselect(sample_from_json, query_aliases_and_join_children):
 # {'city_name': 'Songpa-gu2', 'country_name': 'South Korea2', 'subdivision_names': 'Seoul2,Hangang2'}
 # Soule, Hangang has joined with sep ','
 ```
+```python
+query_aliases_and_join_children = {
+    ('city', 'names', 'en'): 'city_name',
+    ('country', 'names', 'en'): 'country_name',
+    ('subdivisions', 'names', 'en'): [
+        'subdivision_names',
+        ','.join, str.upper # alias, chaining function
+    ]
+}
+
+for r in diselect(sample_from_json, query_aliases_and_join_children):
+    print(r)
+# results
+# {'city_name': 'Songpa-gu', 'country_name': 'South Korea', 'subdivision_names': 'SEOUL,HANGANG'}
+# {'city_name': 'Songpa-gu2', 'country_name': 'South Korea2', 'subdivision_names': 'SEOUL2,HANGANG2'}
+```
+
+```python
+# Useage 5) merge muliple select
+ 
+query = {
+    (('continent', 'names', 'en'), ('country', 'names', 'en'), ('city', 'names', 'en')):[
+        'address',
+        '/' # if str, be a shorcut of join function
+    ],
+    (('latitude',), ('longitude',)): [
+        'coordinate'
+    ]
+}
+for r in diselect(sample_from_json, query):
+    print(r)
+
+# {'address': 'Asia/South Korea/Songpa-gu', 'coordinate': [37.5013, 127.1188]}
+# {'address': 'Asia2/South Korea2/Songpa-gu2', 'coordinate': [37.5013, 127.1188]}
+
+# appling functions to coordinate...
+query = {
+    (('continent', 'names', 'en'), ('country', 'names', 'en'), ('city', 'names', 'en')):[ #tuple of multiple paths,
+        'address', '/'
+    ],
+    (('latitude',), ('longitude',)): [ 
+        'coordinate',
+        str,    # convert individual float type elements to str for join
+        ','     
+    ]
+}
+for r in diselect(sample_from_json, query):
+    print(r)
+
+# {'address': 'Asia/South Korea/Songpa-gu', 'coordinate': '37.5013,127.1188'}
+# {'address': 'Asia2/South Korea2/Songpa-gu2', 'coordinate': '37.5013,127.1188'}
+```
+
 
 ```python
 # 4) Summary
@@ -196,15 +248,21 @@ query = {
     ('country', 'iso_code'): 'country_code',
     ('country', 'names', 'en'): 'country_name',
     ('location', 'time_zone'): 'timezone',
-    ('subdivisions', 'names', 'en'): ('subdivision_name', '|'.join), 
+    (('latitude',), ('longitude',)): [
+        'coordinate',
+        str, ','
+    ],
+    ('subdivisions', 'names', 'en'): [
+        'subdivision_name',
+        ',', str.upper
+    ]
 }
 
 for r in diselect(container=sample_from_json, query=query):
     print(r)
 
-# results
-# {'city_name': 'Songpa-gu', 'continent_code': 'AS', 'continent_name': 'Asia', 'country_code': 'KR', 'country_name': 'South Korea', 'timezone': 'Asia/Seoul', 'subdivision_name': 'Seoul|Hangang'}
-# {'city_name': 'Songpa-gu2', 'continent_code': 'AS2', 'continent_name': 'Asia2', 'country_code': 'KR2', 'country_name': 'South Korea2', 'timezone': 'Asia/Seoul2', 'subdivision_name': 'Seoul2|Hangang2'}
+# {'city_name': 'Songpa-gu', 'continent_code': 'AS', 'continent_name': 'Asia', 'country_code': 'KR', 'country_name': 'South Korea', 'timezone': 'Asia/Seoul', 'coordinate': '37.5013,127.1188', 'subdivision_name': 'SEOUL,HANGANG'}
+# {'city_name': 'Songpa-gu2', 'continent_code': 'AS2', 'continent_name': 'Asia2', 'country_code': 'KR2', 'country_name': 'South Korea2', 'timezone': 'Asia/Seoul2', 'coordinate': '37.5013,127.1188', 'subdivision_name': 'SEOUL2,HANGANG2'}
 ```
 
 ----
@@ -258,7 +316,7 @@ greedy_query = [
         ('country', 'iso_code'): 'country_code',
         ('country', 'names', 'en'): 'country_name',
         ('location', 'time_zone'): 'timezone',
-        ('subdivisions', 'names', 'en'): ('subdivision_name', ','.join), 
+        ('subdivisions', 'names', 'en'): ('subdivision_name', ','), 
     }
 ]
 
@@ -282,7 +340,7 @@ query_list = {
     ('country', 'iso_code'): 'country_code',
     ('country', 'names', 'en'): 'country_name',
     ('location', 'time_zone'): 'timezone',
-    ('subdivisions', 'names', 'en'): ('subdivision_name', ','.join), 
+    ('subdivisions', 'names', 'en'): ('subdivision_name', ','), 
 }
 
 

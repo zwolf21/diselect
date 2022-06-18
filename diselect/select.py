@@ -1,7 +1,7 @@
 import logging
 from itertools import groupby
 
-from .utils import apply_to_depth, ParameterBase
+from .utils import apply_to_depth
 from .exceptions import *
 from .flatten import FlatItem
 from .queryset import MatchedQuery

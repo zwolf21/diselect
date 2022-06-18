@@ -1,7 +1,6 @@
-from .quries import resolve_query
-from .container import *
-
-
+from .queryset import get_queryset
+from .flatten import flatten_container
+from .select import *
 
 def diselect(container, query, none='ignore'):
     ''' - query examples: 
@@ -18,14 +17,15 @@ def diselect(container, query, none='ignore'):
              -'drop': remove column if value is None 
              -'apply': Treated like any other value
     '''
-    flatten = flatten_container(container)
-    qs = resolve_query(query)
-    produced = produce_by_query(flatten, qs)
-    pivot_index = get_top_depth(produced)
-    selected_groups = groupby_depth(produced, pivot_index)
 
-    for selected in selected_groups:
-        selected = merge_multi_query(selected)        
-        selected = groupby_depth(selected, pivot_index, updates=True)
-        selected = transform_selected(selected, qs, none=none)
-        yield from selected
+    flatten = flatten_container(container)
+    qs = get_queryset(query)
+    selected = produce_selected(flatten, qs)
+    pivot_index = get_top_depth(selected)
+    for rowset in produce_rowset(selected, pivot_index):
+        rowset = merge_multi_query_rowset(rowset)
+        values = compose_to_values(rowset, pivot_index)
+        values = apply_value(values, qs, none=none)
+        values = alias_fields(values, qs)
+        yield order_column(values, qs)
+

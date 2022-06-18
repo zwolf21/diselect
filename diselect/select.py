@@ -7,6 +7,7 @@ from .flatten import FlatItem
 from .queryset import MatchedQuery
 
 
+
 logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
@@ -144,7 +145,6 @@ def alias_fields(row, queryset):
 
 
 def order_column(row, queryset):
-
     return {
       f:row[f] for f in queryset.get_aliases() if f in row        
     }

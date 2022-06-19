@@ -1,7 +1,12 @@
+import logging
+
 from .select import *
 from .queryset import get_queryset
 from .flatten import flatten_container
 
+
+
+logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
 
@@ -20,10 +25,18 @@ def diselect(container, query, none='ignore'):
              -'drop': remove column if value is None 
              -'apply': Treated like any other value
     '''
-
+    # prepare data
     flatten = flatten_container(container)
     qs = get_queryset(query)
-    selected = produce_selected(flatten, qs)
+
+    # filter data
+    matched = produce_selected(flatten, qs)
+    selected = qs.validate_matched(matched)
+    qs.raise_for_overmatched()
+    if undermatched := qs.filter_undermatched():
+        logging.warning(f'Cannot match path with query: {undermatched}')
+
+    # grouping and transform data
     pivot_index = get_top_depth(selected)
     for rowset in produce_rowset(selected, pivot_index):
         rowset = merge_multi_query_rowset(rowset)

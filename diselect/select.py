@@ -1,4 +1,3 @@
-import logging
 from itertools import groupby
 
 from .utils import apply_to_depth
@@ -6,9 +5,6 @@ from .exceptions import *
 from .flatten import FlatItem
 from .queryset import MatchedQuery
 
-
-
-logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
 
@@ -29,25 +25,18 @@ class SelectItem(FlatItem, MatchedQuery):
 
 
 
-
 def produce_selected(flatten, queryset):
-    validator = {}
-    result = [
+    return  [
         SelectItem(**flat.as_kwargs(), **matched.as_kwargs())
         for flat in flatten
-        for matched in queryset.produce_path_matched(flat.path, validator)
+        for matched in queryset.produce_path_matched(flat.path)
     ]
 
-    queryset.raise_for_overmatched(validator)
-
-    if undermatched := queryset.filter_undermatched(validator):
-        logging.warning(f'Cannot match path with query: {undermatched}')
- 
-    return result
 
 
 def get_top_depth(selected):
     return min([len(sel.index) for sel in selected], default=0)
+
 
 
 def produce_rowset(selected, pivot_index):

@@ -18,6 +18,12 @@ class Query(ParameterBase):
             queries=str(self.queries), alias=self.alias
         )
 
+    def path_match(self, path, get_pos=False):
+        for i, qry in enumerate(self.queries):
+            if path[-len(qry):] == qry:
+                return i, qry
+    
+
 
 class MatchedQuery(Query):
 
@@ -32,14 +38,33 @@ class QuerySet:
 
     def __init__(self, queryset):
         self.qs = queryset
+        self.exact_matchedset = set()
+        self.matchedset = {}
 
-    def produce_path_matched(self, path:tuple, matchedset:dict):
+
+    def produce_path_matched(self, path:tuple):
         for query in self.qs:
-            for p, qry in enumerate(query.queries):
-                if path[-len(qry):] == qry:
-                    matchedset.setdefault(qry, set()).add(path)
-                    yield MatchedQuery(p, path, **query.__dict__)
+            if m:= query.path_match(path):
+                pos, qry = m
+                if path == qry:
+                    self.exact_matchedset.add(qry)
+                yield MatchedQuery(pos, path, **query.as_kwargs())
+
     
+    def validate_matched(self, matched):
+        result = []
+        for match in matched:
+            if set(match.queries) & self.exact_matchedset:
+                if match.path not in match.queries:
+                    continue
+            
+            _, qry = match.path_match(match.path)
+            self.matchedset.setdefault(qry, set()).add(match.path)
+
+            result.append(match)
+        return result
+
+
     def get_query(self, queries):
         for query in self.qs:
             if query.queries == queries:
@@ -53,10 +78,10 @@ class QuerySet:
             q.alias for q in self.qs
         ]
 
-    def raise_for_overmatched(self, matchedset):
-        for qry, paths in matchedset.items():
+    def raise_for_overmatched(self):
+        for qry, paths in self.matchedset.items():
             if len(paths) > 1:
                 raise QueryMultipleMatched(qry, paths)
 
-    def filter_undermatched(self, matchedset):
-        return set(self.get_flatten_query()) - matchedset.keys()
+    def filter_undermatched(self):
+        return set(self.get_flatten_query()) - self.matchedset.keys()

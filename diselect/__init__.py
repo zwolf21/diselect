@@ -1,12 +1,6 @@
-import logging
-
 from .select import *
 from .queryset import get_queryset
 from .flatten import flatten_container
-
-
-
-logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
 
@@ -30,11 +24,7 @@ def diselect(container, query, none='ignore'):
     qs = get_queryset(query)
 
     # filter data
-    matched = produce_selected(flatten, qs)
-    selected = qs.validate_matched(matched)
-    qs.raise_for_overmatched()
-    if undermatched := qs.filter_undermatched():
-        logging.warning(f'Cannot match path with query: {undermatched}')
+    selected = produce_selected(flatten, qs)
 
     # grouping and transform data
     pivot_index = get_top_depth(selected)

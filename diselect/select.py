@@ -1,14 +1,18 @@
+import logging
 from itertools import groupby
 
 from .utils import apply_to_depth
 from .exceptions import *
 from .flatten import FlatItem
-from .queryset import MatchedQuery
+from .queryset import Query
 
 
 
+logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
-class SelectItem(FlatItem, MatchedQuery):
+
+
+class SelectItem(FlatItem, Query):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,14 +27,52 @@ class SelectItem(FlatItem, MatchedQuery):
     def merge2multiple_value(self, other):
         self.value.append(other.value)
 
+    def get_matched_parts(self):
+        return self.match_path(self.path)
 
+    def get_matched_pos(self):
+        matched_parts = self.get_matched_parts()
+        return self.queries.index(matched_parts)
+
+    def is_exact_matched(self):
+        return self.path in self.queries
+    
+    def was_exact_matched(self, exact_history):
+        return set(self.queries) & set(exact_history)
+
+    
 
 def produce_selected(flatten, queryset):
-    return  [
-        SelectItem(**flat.as_kwargs(), **matched.as_kwargs())
+    selected = [
+        SelectItem(**flat.as_kwargs(), **query.as_kwargs())
         for flat in flatten
-        for matched in queryset.produce_path_matched(flat.path)
+        for query in queryset.produce_matched(flat.path)
     ]
+
+    exact_matched_history = set([
+       sel.get_matched_parts() for sel in selected
+       if sel.is_exact_matched()
+    ])
+
+    matchedset = {}    
+    validated = []
+    for item in selected:
+        if item.was_exact_matched(exact_matched_history):
+            if not item.is_exact_matched():
+                continue
+        
+        parts = item.get_matched_parts()
+        matchedset.setdefault(parts, set()).add(item.path)
+        validated.append(item)
+    
+    for parts, paths in matchedset.items():
+        if len(paths) > 1:
+            raise QueryMultipleMatched(parts, paths)
+
+    if undermatched:=set(queryset.get_flatten_query()) - matchedset.keys():
+        logging.warning(f'Cannot match path with query: {undermatched}')
+
+    return validated
 
 
 
@@ -47,7 +89,7 @@ def produce_rowset(selected, pivot_index):
     
 
 def merge_multi_query_rowset(rowset):
-    rowset = sorted(rowset, key=lambda sel: (sel.queries, sel.index, sel.matched_pos))
+    rowset = sorted(rowset, key=lambda sel: (sel.queries, sel.index, sel.get_matched_pos()))
     result = []
     for (queries, index), grouped in groupby(rowset, key=lambda sel: (sel.queries, sel.index)):
         if len(queries) > 1:

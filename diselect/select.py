@@ -1,10 +1,11 @@
 import logging
 from itertools import groupby
+from dataclasses import dataclass
 
 from .utils import apply_to_depth
 from .exceptions import *
-from .flatten import FlatItem
-from .queryset import Query
+from .flatten.item import FlatItem
+from .queryset.query import Query
 
 
 
@@ -12,13 +13,8 @@ logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
 
 
+@dataclass
 class SelectItem(FlatItem, Query):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-    def __str__(self):
-        return str(self.__dict__)
 
     def set_mutiple_value_type(self):
         if not isinstance(self.value, (list, tuple)):

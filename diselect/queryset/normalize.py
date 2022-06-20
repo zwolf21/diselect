@@ -1,6 +1,5 @@
-from .query import Query, QuerySet
-from diselect.exceptions import *
-from diselect.utils import get_nested_depth
+from ..exceptions import InvalidQueryKey, InvalidQueryValues
+from ..utils import get_nested_depth
 
 
 
@@ -43,13 +42,3 @@ def set_queryvalue(value):
     return alias, apply
 
 
-def get_queryset(query, _depth=0):
-    if _depth == 0:
-        query = query2dict(query)
-        return get_queryset(query, _depth=_depth+1)
-    elif _depth == 1:
-        qs = [
-            Query(multiply_querykey(key), *set_queryvalue(value))
-            for key, value in query.items()
-        ]
-        return QuerySet(qs)

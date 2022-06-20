@@ -1,2 +1,1 @@
-from .functions import *
-from .query import *
+from .query import get_queryset

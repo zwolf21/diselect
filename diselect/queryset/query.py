@@ -1,48 +1,33 @@
 from functools import reduce
+from dataclasses import dataclass
 
-from ..utils import ParameterBase
-from ..exceptions import QueryMultipleMatched
+from ..utils.bases import ParameterBase
+from .normalize import query2dict, multiply_querykey, set_queryvalue
 
 
 
-
+@dataclass
 class Query(ParameterBase):
-
-    def __init__(self, queries, alias, applies, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.queries = queries
-        self.alias = alias
-        self.applies = applies
-
-    def __str__(self):
-        return 'queries: {queries:<15} alias: {alias:<25}'.format(
-            queries=str(self.queries), alias=self.alias
-        )
-
+    queries: tuple
+    alias: str
+    applies: list[callable]
 
     def match_path(self, path):
         for parts in self.queries:
             if path[-len(parts):] == parts:
                 return parts
     
-
         
-
 class QuerySet:
 
-    def __init__(self, queryset):
+    def __init__(self, queryset:list[Query]):
         self.qs = queryset
-        self.exact_matchedset = set()
-        self.matchedset = {}
-
 
     def produce_matched(self, path:tuple):
-        for query in self.qs:
-            if matched_parts:= query.match_path(path):
-                if path == matched_parts:
-                    self.exact_matchedset.add(matched_parts)
-                yield Query(**query.as_kwargs())
-
+        yield from (
+            Query(**query.as_kwargs()) for query in self.qs 
+            if query.match_path(path)
+        )
 
     def get_query(self, queries):
         for query in self.qs:
@@ -56,3 +41,15 @@ class QuerySet:
         return [
             q.alias for q in self.qs
         ]
+
+
+def get_queryset(query, _depth=0):
+    if _depth == 0:
+        query = query2dict(query)
+        return get_queryset(query, _depth=_depth+1)
+    elif _depth == 1:
+        qs = [
+            Query(multiply_querykey(key), *set_queryvalue(value))
+            for key, value in query.items()
+        ]
+        return QuerySet(qs)

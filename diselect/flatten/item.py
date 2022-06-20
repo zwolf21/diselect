@@ -1,22 +1,28 @@
+from dataclasses import dataclass
+
 from ..utils.bases import ParameterBase
 
 
 
+@dataclass
 class FlatItem(ParameterBase):
-
-    def __init__(self, index, path, value, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.index = index
-        self.path = path
-        self.value = value
-
-    def __str__(self):
-        kwargs = {
-            k:str(v) for k, v in self.__dict__.items()
-        }
-        return 'INDEX: {index:<15} PATH: {path:<25} VALUE: {value:<20}'.format(**kwargs)
+    index:tuple
+    path: tuple
+    value: object
 
 
 
 
-        
+def flatten_container(container, index=None, path=None):
+    index = index or (0,)
+    path = path or ()
+
+    if not isinstance(container, (dict, list)):
+        yield FlatItem(index, path, container)
+
+    if isinstance(container, dict):
+        for key, val in container.items():
+            yield from flatten_container(val, index, (*path, key))
+    elif isinstance(container, (list, tuple, set)):
+        for i, val in enumerate(container):
+            yield from flatten_container(val, (*index, i), path)

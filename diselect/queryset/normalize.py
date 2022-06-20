@@ -1,5 +1,5 @@
-from ..exceptions import InvalidQueryKey, InvalidQueryValues
 from ..utils import get_nested_depth
+from ..exceptions import InvalidQueryKey, InvalidQueryValues
 
 
 

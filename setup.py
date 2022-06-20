@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
 	name='diselect',
-	version='1.0.8',
+	version='1.0.9',
 	license='MIT',
 	description='smart and convenient dict flatten library for complex container nested with dict and list',
 	long_description=long_description,

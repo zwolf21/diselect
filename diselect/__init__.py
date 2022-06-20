@@ -1,4 +1,5 @@
-from .select import *
+from .select import produce_selected, get_top_depth
+from .rowset import produce_rowset
 from .queryset import get_queryset
 from .flatten import flatten_container
 
@@ -29,8 +30,4 @@ def diselect(container, query, none='ignore'):
     # grouping and transform data
     pivot_index = get_top_depth(selected)
     for rowset in produce_rowset(selected, pivot_index):
-        rowset = merge_multi_query_rowset(rowset)
-        values = compose_to_values(rowset, pivot_index)
-        values = apply_value(values, qs, none=none)
-        values = alias_fields(values, qs)
-        yield order_column(values, qs)
+        yield rowset.as_result(none=none, fields=qs.get_aliases())

@@ -12,7 +12,6 @@ class FlatItem(ParameterBase):
 
 
 
-
 def flatten_container(container, index=None, path=None):
     index = index or (0,)
     path = path or ()

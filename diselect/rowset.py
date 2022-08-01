@@ -1,6 +1,7 @@
 from itertools import groupby
 from dataclasses import dataclass
 from operator import attrgetter
+from typing import Callable, List
 
 from .utils import apply_to_depth
 
@@ -10,7 +11,7 @@ from .utils import apply_to_depth
 class RowItem:
     index: tuple
     alias: str
-    applies: list[callable]
+    applies: List[Callable]
     value: object
     nested_depth: int
     queries_length: int
@@ -117,7 +118,7 @@ class RowSet:
 def produce_rowset(selected, pivot_index):
     groupkey = lambda sel: sel.index[:pivot_index]
     selected = sorted(selected, key=groupkey)
-    for index, selected_set in groupby(selected, key=groupkey):
+    for _, selected_set in groupby(selected, key=groupkey):
         rows = [
             RowItem(
                 s.index, s.alias, s.applies, s.value,

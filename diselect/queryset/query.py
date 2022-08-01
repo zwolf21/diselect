@@ -1,4 +1,5 @@
 from functools import reduce
+from typing import List, Callable
 from dataclasses import dataclass
 
 from ..utils.bases import ParameterBase
@@ -10,7 +11,7 @@ from .normalize import query2dict, multiply_querykey, set_queryvalue
 class Query(ParameterBase):
     queries: tuple
     alias: str
-    applies: list[callable]
+    applies: List[Callable]
 
     def match_path(self, path):
         for parts in self.queries:
@@ -20,7 +21,7 @@ class Query(ParameterBase):
         
 class QuerySet:
 
-    def __init__(self, queryset:list[Query]):
+    def __init__(self, queryset:List[Query]):
         self.qs = queryset
 
     def produce_matched(self, path:tuple):

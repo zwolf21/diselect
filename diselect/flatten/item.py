@@ -4,7 +4,6 @@ from ..utils.bases import ParameterBase
 
 
 
-
 @dataclass
 class FlatItem(ParameterBase):
     index:tuple

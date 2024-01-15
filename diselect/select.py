@@ -6,8 +6,8 @@ from .flatten.item import FlatItem
 from .queryset.query import Query
 
 
-logging.basicConfig(format='diselect %(levelname)s: %(message)s')
 
+logger = logging.getLogger('diselect')
 
 
 @dataclass
@@ -56,7 +56,7 @@ def produce_selected(flatten, queryset):
             raise QueryMultipleMatched(parts, paths)
 
     if undermatched:=set(queryset.get_flatten_query()) - matchedset.keys():
-        logging.warning(f'Cannot match path with query: {undermatched}')
+        logger.warning(f'Cannot match path with query: {undermatched}')
 
     return validated
 
